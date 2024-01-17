@@ -80,7 +80,11 @@ class DeepSpeedInferenceConfig(TransformerConfig):
                  use_triton=False,
                  triton_autotune=False,
                  num_kv=-1,
-                 rope_theta=10000):
+                 rope_theta=10000,
+                 multi_query=False,
+                 n_top_k=1,
+                 n_experts=1,
+                 moe_freq=1):
         super(DeepSpeedInferenceConfig,
               self).__init__(hidden_size, (intermediate_size if intermediate_size > 0 else 4 * hidden_size), heads,
                              num_hidden_layers)
@@ -116,6 +120,10 @@ class DeepSpeedInferenceConfig(TransformerConfig):
         self.triton_autotune = triton_autotune
         self.num_kv = num_kv
         self.rope_theta = rope_theta
+        self.multi_query = multi_query
+        self.n_top_k = n_top_k
+        self.n_experts = n_experts
+        self.moe_freq = moe_freq
 
     @classmethod
     def from_dict(cls, json_object):

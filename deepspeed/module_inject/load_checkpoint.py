@@ -182,8 +182,10 @@ def load_model_with_checkpoint(r_module,
         OPTLearnedPositionalEmbedding = transformers.models.opt.modeling_opt.OPTLearnedPositionalEmbedding
         if hasattr(transformers.models, "llama"):
             LlamaRMSNorm = transformers.models.llama.modeling_llama.LlamaRMSNorm
+            MixtralRMSNorm = transformers.models.mixtral.modeling_mixtral.MixtralRMSNorm
         else:
             LlamaRMSNorm = None
+            MixtralRMSNorm = None
     except:
         OPTLearnedPositionalEmbedding = None
     try:
@@ -217,6 +219,7 @@ def load_model_with_checkpoint(r_module,
         OPTLearnedPositionalEmbedding: load,
         OPTEmbedding: load,
         LlamaRMSNorm: load,
+        MixtralRMSNorm: load,
         RMSNormalize: load,
         ColumnParallelLinear: load,
         ParallelEmbedding: load,
@@ -254,7 +257,7 @@ def load_model_with_checkpoint(r_module,
                     elif child.__class__ is OPTLearnedPositionalEmbedding:
                         child = OPTEmbedding(weight_shape=ds_shape)
                         setattr(module, name, child)
-                    elif child.__class__ in [LlamaRMSNorm, RMSNorm]:
+                    elif child.__class__ in [LlamaRMSNorm, RMSNorm, MixtralRMSNorm]:
                         child = RMSNormalize(dim=ds_shape[-1],
                                              dtype=child.weight.dtype,
                                              eps=child.eps if hasattr(child, 'eps') else child.variance_epsilon)

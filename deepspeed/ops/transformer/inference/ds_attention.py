@@ -37,8 +37,12 @@ class DeepSpeedSelfAttention(nn.Module):
             self.attn_ow = None
             self.attn_ob = None
         else:
-            qkv_size_per_partition = (self.config.hidden_size // self.config.mp_size) * 3 if config.num_kv < 0 else \
-                                     ((self.config.heads + self.config.num_kv * 2) // self.config.mp_size) * (self.config.hidden_size // self.config.heads)
+            if self.config.multi_query:
+                qkv_size_per_partition = (self.config.hidden_size // self.config.heads) * (
+                    self.config.num_kv * 2 + self.config.heads) // self.config.mp_size
+            else:
+                qkv_size_per_partition = (self.config.hidden_size // self.config.mp_size) * 3
+            
             self.attn_qkvw = nn.Parameter(torch.empty(self.config.hidden_size,
                                                       qkv_size_per_partition,
                                                       dtype=data_type,
@@ -93,7 +97,7 @@ class DeepSpeedSelfAttention(nn.Module):
         if isinstance(qkv_out, list) or isinstance(qkv_out, tuple):
             qkv_out = qkv_out[0]
 
-        no_masking = input_mask is None
+        no_masking = True #input_mask is None
 
         if no_masking:
             input_mask = torch.empty(1)
@@ -164,9 +168,10 @@ class DeepSpeedSelfAttention(nn.Module):
 
         output = self.vector_matmul_func(input=context_layer, weight=self.attn_ow)
         inp_norm = qkv_out[-1]
-
         if self.config.mlp_after_attn and self.mp_group is not None and dist.get_world_size(group=self.mp_group) > 1:
+            # output_float = output.float()
             dist.all_reduce(output, group=self.mp_group)
+            # output = output_float.to(output.dtype)
         return (output, key_layer, value_layer, context_layer, inp_norm)
 
 

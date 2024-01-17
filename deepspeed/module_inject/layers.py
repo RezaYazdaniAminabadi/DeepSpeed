@@ -48,8 +48,8 @@ class LmHeadLinearAllreduce(nn.Module):
         self.world_size = world_size
 
     def forward(self, input):
-        input_shard_size = get_shard_size(input.shape[-1], self.world_size, "lm_head")
-        input_shard_offset = sum(get_shard_size_list(input.shape[-1], self.world_size, "lm_head")[0:self.rank])
+        input_shard_size = get_shard_size(input.shape[-1], self.world_size)
+        input_shard_offset = sum(get_shard_size_list(input.shape[-1], self.world_size)[0:self.rank])
         output = torch.matmul(input[:, :, input_shard_offset:input_shard_offset + input_shard_size],
                               self.weight.transpose(-1, -2))
         if self.mp_group is not None:
@@ -61,7 +61,7 @@ class LmHeadLinearAllreduce(nn.Module):
 
 class LinearLayer(nn.Module):
 
-    def __init__(self, weight_shape=None, dtype=torch.half, weight=None, bias=None):
+    def __init__(self, weight_shape=None, dtype=torch.bfloat16, weight=None, bias=None):
         super(LinearLayer, self).__init__()
         if weight is not None:
             self.weight = weight
@@ -103,7 +103,7 @@ class Normalize(nn.Module):
 
 class EmbeddingLayer(nn.Module):
 
-    def __init__(self, weight_shape=None, dtype=torch.half, weight=None, bias=None):
+    def __init__(self, weight_shape=None, dtype=torch.bfloat16, weight=None, bias=None):
         super(EmbeddingLayer, self).__init__()
         if weight is None:
             self.weight = Parameter(

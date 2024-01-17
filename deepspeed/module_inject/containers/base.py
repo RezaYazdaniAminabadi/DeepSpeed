@@ -298,7 +298,7 @@ class BaseTransformerContainer(ABC):
     def transpose_impl(self, data):
         data = data.contiguous()
         data.reshape(-1).copy_(data.transpose(-1, -2).contiguous().reshape(-1))
-        data = data.reshape(data.shape[-1], data.shape[-2])
+        data = data.reshape(-1, data.shape[-1], data.shape[-2]).squeeze(0)
         data.to(get_accelerator().current_device_name())
         return data
 
