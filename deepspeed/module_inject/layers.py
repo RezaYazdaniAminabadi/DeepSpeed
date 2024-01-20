@@ -61,7 +61,7 @@ class LmHeadLinearAllreduce(nn.Module):
 
 class LinearLayer(nn.Module):
 
-    def __init__(self, weight_shape=None, dtype=torch.bfloat16, weight=None, bias=None):
+    def __init__(self, weight_shape=None, dtype=torch.float16, weight=None, bias=None):
         super(LinearLayer, self).__init__()
         if weight is not None:
             self.weight = weight
@@ -77,7 +77,7 @@ class LinearLayer(nn.Module):
                 if bias is not None else None
 
     def forward(self, input):
-        output = torch.matmul(input, self.weight.transpose(-1, -2))
+        output = torch.matmul(input.to(self.weight.dtype), self.weight.transpose(-1, -2))
         if self.bias is not None:
             output += self.bias
         return output
@@ -103,7 +103,7 @@ class Normalize(nn.Module):
 
 class EmbeddingLayer(nn.Module):
 
-    def __init__(self, weight_shape=None, dtype=torch.bfloat16, weight=None, bias=None):
+    def __init__(self, weight_shape=None, dtype=torch.float16, weight=None, bias=None):
         super(EmbeddingLayer, self).__init__()
         if weight is None:
             self.weight = Parameter(

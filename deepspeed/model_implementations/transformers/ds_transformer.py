@@ -76,15 +76,15 @@ class DeepSpeedTransformerInference(nn.Module):
         if deepspeed.HAS_TRITON and self.config.use_triton:
             self.mlp = TritonMLP(self.config)
         else:
-            if self.config.n_experts > 1 and (self.config.layer_id % self.config.moe_freq) < (self.config.moe_freq - 1):
-                self.moe_layer = False
-                self.mlp = DeepSpeedMLP(self.config, mp_group, quantize_scales, 
-                                    quantize_groups, merge_count,
-                                    mlp_extra_grouping)
-            else:
+            if self.config.n_experts > 1 and (self.config.layer_id % self.config.moe_freq) == (self.config.moe_freq - 1):
                 self.moe_layer = True
                 self.mlp = DeepSpeedMoEMLP(self.config, mp_group, 
                                     quantize_scales, quantize_groups, merge_count,
+                                    mlp_extra_grouping)
+            else:
+                self.moe_layer = False
+                self.mlp = DeepSpeedMLP(self.config, mp_group, quantize_scales, 
+                                    quantize_groups, merge_count,
                                     mlp_extra_grouping)
 
 

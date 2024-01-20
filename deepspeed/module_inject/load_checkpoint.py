@@ -239,7 +239,7 @@ def load_model_with_checkpoint(r_module,
                         child.weight.ds_id in all_ds_ids):
                         prefix1 = all_ds_ids[child.weight.ds_id]
                         if child.__class__ is nn.Linear:
-                            child = LinearLayer(weight=all_ds_ids[child.weight.ds_id])
+                            child = LinearLayer(weight=all_ds_ids[child.weight.ds_id], dtype=child.weight.dtype)
                             setattr(module, name, child)
                     continue
                 child_params = list(child.parameters())
@@ -252,10 +252,10 @@ def load_model_with_checkpoint(r_module,
                         child = Normalize(dim=ds_shape[-1], dtype=child.weight.dtype, eps=child.eps)
                         setattr(module, name, child)
                     elif child.__class__ in [nn.Linear, ColumnParallelLinear, RowParallelLinear]:
-                        child = LinearLayer(weight_shape=child.weight.shape, bias=child.bias)
+                        child = LinearLayer(weight_shape=child.weight.shape, bias=child.bias, dtype=child.weight.dtype)
                         setattr(module, name, child)
                     elif child.__class__ is OPTLearnedPositionalEmbedding:
-                        child = OPTEmbedding(weight_shape=ds_shape)
+                        child = OPTEmbedding(weight_shape=ds_shape, dtype=child.weight.dtype)
                         setattr(module, name, child)
                     elif child.__class__ in [LlamaRMSNorm, RMSNorm, MixtralRMSNorm]:
                         child = RMSNormalize(dim=ds_shape[-1],
