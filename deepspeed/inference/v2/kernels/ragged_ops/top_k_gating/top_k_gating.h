@@ -17,5 +17,4 @@ void top_k_gating(torch::Tensor& expert_counts,
                   torch::Tensor& scores,
                   torch::Tensor& assignments,
                   torch::Tensor& offsets,
-                  torch::Tensor& logits,
-                  torch::Tensor& batch_metadata);
+                  torch::Tensor& logits);

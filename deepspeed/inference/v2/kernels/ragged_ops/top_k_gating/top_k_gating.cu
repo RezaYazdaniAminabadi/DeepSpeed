@@ -17,8 +17,8 @@ __global__ void top_k_gating_kernel(int32_t* expert_counts,
                                     int32_t* assignments,
                                     int32_t* offsets,
                                     const T* logits,
-                                    const RaggedBatchDescriptor* batch_metadata,
-                                    const int32_t n_experts)
+                                    const int32_t n_experts,
+                                    const int32_t n_tokens)
 {
     const int32_t token_idx = blockIdx.x;
     const int32_t expert_idx = threadIdx.x;
@@ -29,7 +29,7 @@ __global__ void top_k_gating_kernel(int32_t* expert_counts,
     cg::thread_block_tile<hw_warp_size> warp = cg::tiled_partition<hw_warp_size>(tb);
 
     // Padding tokens do not require
-    if (token_idx >= batch_metadata->n_tokens) {
+    if (token_idx >= n_tokens) {
         if (threadIdx.x == 0) {
 #pragma unroll
             for (int i = 0; i < TOP_K; i++) {
@@ -92,7 +92,6 @@ void launch_top_k_gating(int32_t* expert_counts,
                          int32_t* assignments,
                          int32_t* offsets,
                          const T* logits,
-                         const RaggedBatchDescriptor* batch_metadata,
                          const int32_t n_tokens,
                          const int32_t n_experts,
                          const int32_t n_top_k,
@@ -103,7 +102,7 @@ void launch_top_k_gating(int32_t* expert_counts,
 
     TOP_K_SWITCH(n_top_k, [&] {
         top_k_gating_kernel<T, CONST_TOP_K><<<grid, block, 0, stream>>>(
-            expert_counts, scores, assignments, offsets, logits, batch_metadata, n_experts);
+            expert_counts, scores, assignments, offsets, logits, n_experts, n_tokens);
     });
 }
 
@@ -113,7 +112,6 @@ void launch_top_k_gating(int32_t* expert_counts,
                                          int32_t* assignments,                        \
                                          int32_t* offsets,                            \
                                          const T* logits,                             \
-                                         const RaggedBatchDescriptor* batch_metadata, \
                                          const int32_t n_tokens,                      \
                                          const int32_t n_experts,                     \
                                          const int32_t n_top_k,                       \
