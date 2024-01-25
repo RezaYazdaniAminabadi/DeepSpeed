@@ -246,13 +246,26 @@ def maybe_copy_geglu(module, sd, weight_quantizer, mp_replace, dst_name, src_nam
 def maybe_copy_experts_geglu(module, sd, weight_quantizer, mp_replace, dst_name, prefix, src_names, expert_id):
     if prefix + src_names[0] in sd:
         reg_proj = sd[prefix + src_names[0]]
+    else:
+        reg_proj = None
+    if prefix + src_names[1] in sd:
         gate_proj = sd[prefix + src_names[1]]
-
-        mlp1_data = torch.cat((reg_proj, gate_proj), dim=0)
+    else:
+        gate_proj = None
+    if prefix + src_names[0] in sd or prefix + src_names[1] in sd:
         dst = getattr(module, dst_name)
-
-        dst[expert_id].data.copy_(mp_replace.strided_copy(dst[expert_id], weight_quantizer.quantize(mlp1_data.to(get_accelerator().device_name()) if weight_quantizer.q_int8 else \
-                                            transpose(mlp1_data)), num_splits=2, int8=weight_quantizer.q_int8))
+        reg_proj = torch.empty_like(gate_proj) if reg_proj is None else reg_proj
+        gate_proj = torch.empty_like(reg_proj) if gate_proj is None else gate_proj
+        mlp1_data = torch.cat((reg_proj, gate_proj), dim=0)
+        out = mp_replace.strided_copy(dst[expert_id], weight_quantizer.quantize(mlp1_data.to(get_accelerator().device_name()) if weight_quantizer.q_int8 else \
+                                            transpose(mlp1_data)), num_splits=2, int8=weight_quantizer.q_int8)
+        
+        if prefix + src_names[0] in sd and prefix + src_names[1] in sd:
+            dst[expert_id].data.copy_(out)
+        elif prefix + src_names[0] in sd:
+            dst[expert_id].data[..., : reg_proj.shape[0]].copy_(out[..., : reg_proj.shape[0]])
+        else:
+            dst[expert_id].data[..., reg_proj.shape[0]: ].copy_(out[..., reg_proj.shape[0]: ])
         setattr(module, dst_name, dst)
 
 def pack_lora_weights(p):

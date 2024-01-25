@@ -371,8 +371,8 @@ def replace_transformer_layer(orig_layer_impl, model, checkpoint_dict, config, m
         base_dir1 = checkpoint_dict.get('base_dir', config.base_dir)
 
         if ckpt_type == 'pp' and type(checkpoint) is list:
+            checkpoint = checkpoint[rank] if type(checkpoint[0]) is list else checkpoint
             pbar = tqdm.tqdm(total=len(checkpoint), desc=f"Loading {len(checkpoint)} checkpoint shards")
-
             for i in range(len(checkpoint)):
                 if checkpoint[i].endswith(".safetensors"):
                     from safetensors.torch import load_file
