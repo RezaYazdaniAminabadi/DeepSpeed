@@ -171,7 +171,7 @@ class DeepSpeedSelfAttention(nn.Module):
         if self.config.mlp_after_attn and self.mp_group is not None and dist.get_world_size(group=self.mp_group) > 1:
             parallel_output = output.float() if self.config.fp32_allreduce else output
             dist.all_reduce(parallel_output, group=self.mp_group)
-            parallel_output = parallel_output.to(output.dtype)
+            output = parallel_output.to(output.dtype)
         return (output, key_layer, value_layer, context_layer, inp_norm)
 
 
