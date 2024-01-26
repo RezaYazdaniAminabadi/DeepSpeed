@@ -119,7 +119,7 @@ class DeepSpeedMLP(nn.Module):
                                           final_bias=self.output_b,
                                           residual_add=residual_add)
         if self.mp_group is not None and dist.get_world_size(group=self.mp_group) > 1:
-            # residual_float = residual.float()
-            dist.all_reduce(residual, group=self.mp_group)
-            # residual = residual_float.to(residual.dtype)
+            parallel_residual = residual.float() if self.config.fp32_allreduce else residual
+            dist.all_reduce(parallel_residual, group=self.mp_group)
+            residual = parallel_residual.to(residual.dtype)
         return residual
