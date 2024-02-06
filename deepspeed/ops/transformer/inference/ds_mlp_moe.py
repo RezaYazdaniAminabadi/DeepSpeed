@@ -214,7 +214,8 @@ class DeepSpeedMoEMLP(BaseOp):
 
                 # we cast back to the input dtype
                 routing_weights = routing_weights.to(hidden_states.dtype)
-                routing_weights /= routing_weights.sum(dim=-1, keepdim=True)
+                if self.n_top_k > 1:
+                    routing_weights /= routing_weights.sum(dim=-1, keepdim=True)
 
                 final_hidden_states = torch.zeros(
                     hidden_states.shape, dtype=torch.float, device=hidden_states.device
