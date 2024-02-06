@@ -149,7 +149,8 @@ class DeepSpeedMoEMLP(BaseOp):
                 self.expert_cumsum, #[begin_rank_index: end_rank_index],
                 self.inter_b,
             )
-            intermediate = self.gated_activation(gated_intermediate.unsqueeze(0), torch.tensor([]), 4).squeeze(0)
+            intermediate = swiglu(gated_intermediate)
+            # intermediate = self.gated_activation(gated_intermediate.unsqueeze(0), torch.tensor([]), 4).squeeze(0)
             self._moe_mlp(
                 output_unordered, #[begin_inp_index: end_inp_index],
                 intermediate, #[begin_inp_index: end_inp_index],
@@ -243,7 +244,8 @@ class DeepSpeedMoEMLP(BaseOp):
                     current_state = hidden_states[None, top_x_list].reshape(-1, input.shape[-1])
                     
                     current_hidden_states = torch.matmul(current_state, intm_layer) 
-                    current_hidden_states = swiglu(current_hidden_states)
+                    current_hidden_states = self.gated_activation(current_hidden_states.unsqueeze(0), torch.tensor([]), 4).squeeze(0)
+                    # current_hidden_states = swiglu(current_hidden_states)
                     current_hidden_states = torch.matmul(current_hidden_states, out_layer)
                     current_hidden_states = current_hidden_states * routing_weights[top_x_list, idx_list, None]
 
