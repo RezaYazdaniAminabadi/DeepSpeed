@@ -36,9 +36,9 @@ class DS_MixtralContainer(MetaTensorContainer, BaseTransformerContainer):
         _config.rotate_every_two = False
         _config.rotary_dim = self.hidden_size // self.num_attention_heads
         _config.rope_theta = self.policy.client_module.self_attn.rope_theta
-        _config.n_experts = 64
-        _config.n_top_k = 1
-        _config.moe_freq = 2
+        _config.n_experts = self.policy.client_module.self_attn.config.num_local_experts
+        _config.n_top_k = self.policy.client_module.self_attn.config.num_experts_per_tok
+        _config.moe_freq = self.policy.client_module.self_attn.config.moe_layer_frequency
         # _config.num_kv = 8
         # _config.multi_query = True
         self.module = DeepSpeedGPTInference(_config, mp_group=self.mp_group)
