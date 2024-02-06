@@ -280,6 +280,9 @@ class DeepSpeedInferenceConfig(DeepSpeedConfigModel):
     Deprecated, please use the ``tensor_parallel` config to control model
     parallelism.
     """
+    
+    use_baseline_implementation: bool = Field(False, alias="use_base_implementation")
+
     mpu: object = Field(None, deprecated=True, new_param="tensor_parallel.mpu")
     ep_size: int = Field(1, deprecated=True, new_param="moe.ep_size")
     ep_group: object = Field(None, alias="expert_group", deprecated=True, new_param="moe.ep_group")

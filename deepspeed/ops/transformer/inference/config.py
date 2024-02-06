@@ -85,7 +85,8 @@ class DeepSpeedInferenceConfig(TransformerConfig):
                  n_top_k=1,
                  n_experts=1,
                  moe_freq=1,
-                 fp32_allreduce=True):
+                 fp32_allreduce=True,
+                 use_baseline_implementation=False):
         super(DeepSpeedInferenceConfig,
               self).__init__(hidden_size, (intermediate_size if intermediate_size > 0 else 4 * hidden_size), heads,
                              num_hidden_layers)
@@ -126,6 +127,7 @@ class DeepSpeedInferenceConfig(TransformerConfig):
         self.n_experts = n_experts
         self.moe_freq = moe_freq
         self.fp32_allreduce = fp32_allreduce
+        self.use_baseline_implementation = use_baseline_implementation
 
     @classmethod
     def from_dict(cls, json_object):

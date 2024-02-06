@@ -117,7 +117,8 @@ class BaseTransformerContainer(ABC):
             set_empty_params=self.config.set_empty_params,
             transposed_mode=self.config.transposed_mode,
             use_triton=self.use_triton,
-            triton_autotune=self.config.triton_autotune)
+            triton_autotune=self.config.triton_autotune,
+            use_baseline_implementation=self.config.use_baseline_implementation)
 
         if self.use_triton and deepspeed.HAS_TRITON:
             from .bert import DS_BERTContainer
