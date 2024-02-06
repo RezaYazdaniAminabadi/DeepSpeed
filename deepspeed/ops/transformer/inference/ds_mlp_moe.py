@@ -133,32 +133,24 @@ class DeepSpeedMoEMLP(BaseOp):
                                              device=get_accelerator().current_device())
         output = torch.zeros((tokens // self.n_top_k, self.config.hidden_size),
                                    dtype=moe_input.dtype,
-                                   device=get_accelerator().current_device())     
-        # rank = torch.distributed.get_rank() if torch.distributed.is_initialized() else 0
-        # begin_rank_index = rank * self.n_experts
-        # end_rank_index = (1 + rank) * self.n_experts
-        # begin_inp_index = self.expert_cumsum[begin_rank_index]
-        # if begin_rank_index == 0 and begin_inp_index > 0:
-        #     begin_inp_index = 0
-        # end_inp_index = self.expert_cumsum[end_rank_index - 1]
-        if True: #(end_inp_index - begin_inp_index) != 0:
-            self._moe_mlp(
-                gated_intermediate, #[begin_inp_index: end_inp_index],
-                moe_input, #[begin_inp_index: end_inp_index],
-                self.inter_w,
-                self.expert_cumsum, #[begin_rank_index: end_rank_index],
-                self.inter_b,
-            )
-            intermediate = swiglu(gated_intermediate)
-            # intermediate = self.gated_activation(gated_intermediate.unsqueeze(0), torch.tensor([]), 4).squeeze(0)
-            self._moe_mlp(
-                output_unordered, #[begin_inp_index: end_inp_index],
-                intermediate, #[begin_inp_index: end_inp_index],
-                self.output_w,
-                self.expert_cumsum, #[begin_rank_index: end_rank_index],
-                self.output_b,
-            )
-            self._moe_gather(output, output_unordered, scores, mapped_slots, self.expert_counts)
+                                   device=get_accelerator().current_device())
+        self._moe_mlp(
+            gated_intermediate,
+            moe_input, 
+            self.inter_w,
+            self.expert_cumsum, 
+            self.inter_b,
+        )
+        intermediate = swiglu(gated_intermediate)
+        # intermediate = self.gated_activation(gated_intermediate.unsqueeze(0), torch.tensor([]), 4).squeeze(0)
+        self._moe_mlp(
+            output_unordered, 
+            intermediate, 
+            self.output_w,
+            self.expert_cumsum, 
+            self.output_b,
+        )
+        self._moe_gather(output, output_unordered, scores, mapped_slots, self.expert_counts)
         return output
 
     def _moe_gating(self, input):
@@ -196,8 +188,6 @@ class DeepSpeedMoEMLP(BaseOp):
     def forward(self, input, residual, residual_norm, bias):
         self.gen_tokens += 1
         rank = torch.distributed.get_rank() if torch.distributed.is_initialized() else 0
-        # if self.gen_tokens == 4 and self.config.layer_id == 1:
-        #     print(f'[{rank}] -> {self.config.layer_id}: first input: {input.norm()} residual: {residual.norm()} norm: {self.attn_nw.norm()}')
         if self.inter_w is None:
             self._inter_w, self._inter_b = self._merge_inter_w()
         else:
@@ -220,7 +210,7 @@ class DeepSpeedMoEMLP(BaseOp):
                 router_logits = torch.matmul(hidden_states, self.gate_w.to(input.dtype))
 
                 routing_weights = F.softmax(router_logits, dim=1, dtype=torch.float)
-                routing_weights, selected_experts = torch.topk(routing_weights, 1, dim=-1)
+                routing_weights, selected_experts = torch.topk(routing_weights, self.n_top_k, dim=-1)
 
                 # we cast back to the input dtype
                 routing_weights = routing_weights.to(hidden_states.dtype)
@@ -244,8 +234,7 @@ class DeepSpeedMoEMLP(BaseOp):
                     current_state = hidden_states[None, top_x_list].reshape(-1, input.shape[-1])
                     
                     current_hidden_states = torch.matmul(current_state, intm_layer) 
-                    current_hidden_states = self.gated_activation(current_hidden_states.unsqueeze(0), torch.tensor([]), 4).squeeze(0)
-                    # current_hidden_states = swiglu(current_hidden_states)
+                    current_hidden_states = swiglu(current_hidden_states)
                     current_hidden_states = torch.matmul(current_hidden_states, out_layer)
                     current_hidden_states = current_hidden_states * routing_weights[top_x_list, idx_list, None]
 
