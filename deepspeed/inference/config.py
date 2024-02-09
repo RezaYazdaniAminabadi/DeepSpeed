@@ -240,6 +240,8 @@ class DeepSpeedInferenceConfig(DeepSpeedConfigModel):
     may be different than what the mp size that you want to use during
     inference.
     """
+    
+    use_baseline_implementation: bool = Field(False, alias="use_base_implementation")
 
     replace_method: str = Field(
         "auto",
