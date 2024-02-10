@@ -86,7 +86,7 @@ class DeepSpeedInferenceConfig(TransformerConfig):
                  n_experts=1,
                  moe_freq=1,
                  fp32_allreduce=True,
-                 use_base_implementation=False):
+                 use_baseline_implementation=False):
         super(DeepSpeedInferenceConfig,
               self).__init__(hidden_size, (intermediate_size if intermediate_size > 0 else 4 * hidden_size), heads,
                              num_hidden_layers)
