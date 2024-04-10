@@ -26,9 +26,7 @@ def require_tp_fused_qkvw(name, mp_size):
     return False
 
 
-def prepare_tp_fused_qkvw(module, src, mp_size, gpu_index):
-
-    module_str = str(module).strip()
+def prepare_tp_fused_qkvw(module_str, src, mp_size, gpu_index):
     if src is None:
         return
     fused_type_dict = {
@@ -78,13 +76,6 @@ def prepare_tp_fused_qkvw(module, src, mp_size, gpu_index):
         split_fusedqkv = input.split(get_shard_size_list(shape[0], mp_size), dim=0)
         return split_fusedqkv[gpu_index]
 
-    def _qwen_type_transpose(input, mp_size, module):
-        if not hasattr(module, "_ds_fusedqkv_entered"):
-            # Adjust splitting absolute value variables
-            setattr(module, "_ds_fusedqkv_entered", True)
-            module.attn.split_size = get_shard_size(module.attn.split_size, mp_size)
-        return _glm_type_transpose(input, mp_size)
-
     def _bigcode_type_transpose(input, mp_size):
         n_embd = get_n_embd()
         q = input[:n_embd]
@@ -93,7 +84,7 @@ def prepare_tp_fused_qkvw(module, src, mp_size, gpu_index):
         split_q = q.split(get_shard_size_list(shape[0], mp_size), dim=0)
         return torch.cat((split_q[gpu_index], kv), dim=0)
 
-    def _transpose_fused_qkvw(src, mp_size, fused_qkv_type=None, module=None):
+    def _transpose_fused_qkvw(src, mp_size, fused_qkv_type=None):
 
         # suppose num_heads=n, q(n)_w means the n-th q head linear weight, the weight format are as following
         # bloomtype: [q(1)_w,k(1)_w,v(1)_w,q(2)_w,k(2)_w,v(2)_w,...,q(n)_w,k(n)_w,v(n)_w]
@@ -106,8 +97,6 @@ def prepare_tp_fused_qkvw(module, src, mp_size, gpu_index):
             return _codegen_type_transpose(src, mp_size)
         elif fused_qkv_type == 'glmtype':
             return _glm_type_transpose(src, mp_size)
-        elif fused_qkv_type == 'qwentype':
-            return _qwen_type_transpose(src, mp_size, module)
         elif fused_qkv_type == 'bigcodetype':
             return _bigcode_type_transpose(src, mp_size)
 

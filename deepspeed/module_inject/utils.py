@@ -20,7 +20,7 @@ def policy_to_ds_container(**kwargs):
     from .containers import LLAMALayerPolicy, DS_LLAMAContainer
     from .containers import LLAMA2LayerPolicy, DS_LLAMA2Container
     from .containers import InternLMLayerPolicy, DS_InternLMContainer
-
+    from .containers import DS_MixtralContainer, MixtralLayerPolicy
     policy_to_container = {
         HFGPT2LayerPolicy: DS_GPT2Container,
         HFBertLayerPolicy: DS_BERTContainer,
@@ -33,6 +33,7 @@ def policy_to_ds_container(**kwargs):
         HFDistilBertLayerPolicy: DS_DistilBERTContainer,
         LLAMALayerPolicy: DS_LLAMAContainer,
         LLAMA2LayerPolicy: DS_LLAMA2Container,
+        MixtralLayerPolicy: DS_MixtralContainer,
         InternLMLayerPolicy: DS_InternLMContainer
     }
 

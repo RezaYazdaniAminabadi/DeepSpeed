@@ -32,6 +32,7 @@ class HybridSplitQKVContainer(HybridEngineContainer):
 
     def attention_qkv_mp(self, mp_replace, reversed_dim=False):
         # Only need to alter
+        # import pdb;pdb.set_trace()
         if self.module.attention.attn_qkvw is None:
             params = [
                 (self.module.attention.attn_qw, self.qw),

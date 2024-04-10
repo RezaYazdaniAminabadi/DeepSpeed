@@ -117,7 +117,8 @@ class BaseTransformerContainer(ABC):
             set_empty_params=self.config.set_empty_params,
             transposed_mode=self.config.transposed_mode,
             use_triton=self.use_triton,
-            triton_autotune=self.config.triton_autotune)
+            triton_autotune=self.config.triton_autotune,
+            use_baseline_implementation=self.config.use_baseline_implementation)
 
         if self.use_triton and deepspeed.HAS_TRITON:
             from .bert import DS_BERTContainer
@@ -298,7 +299,7 @@ class BaseTransformerContainer(ABC):
     def transpose_impl(self, data):
         data = data.contiguous()
         data.reshape(-1).copy_(data.transpose(-1, -2).contiguous().reshape(-1))
-        data = data.reshape(data.shape[-1], data.shape[-2])
+        data = data.reshape(-1, data.shape[-1], data.shape[-2]).squeeze(0)
         data.to(get_accelerator().current_device_name())
         return data
 

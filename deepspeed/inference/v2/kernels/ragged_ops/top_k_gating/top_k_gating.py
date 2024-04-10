@@ -33,8 +33,7 @@ class RaggedTopKGating(DSKernelBase):
         self.kernel = inf_module.top_k_gating
 
     def __call__(self, expert_counts: torch.Tensor, scores: torch.Tensor, assignments: torch.Tensor,
-                 offsets: torch.Tensor, logits: torch.Tensor,
-                 batch: RaggedBatchWrapper) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+                 offsets: torch.Tensor, logits: torch.Tensor,) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Perform the ragged top_k_gating.
 
@@ -55,5 +54,5 @@ class RaggedTopKGating(DSKernelBase):
         Returns:
             tuple of (expert_counts, scores, expert_assignment, expert_offset)
         """
-        self.kernel(expert_counts, scores, assignments, offsets, logits, batch.batch_metadata_buffer())
+        self.kernel(expert_counts, scores, assignments, offsets, logits,)
         return expert_counts, scores, assignments, offsets

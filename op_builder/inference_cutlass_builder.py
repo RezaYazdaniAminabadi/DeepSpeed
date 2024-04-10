@@ -68,12 +68,9 @@ class InferenceCutlassBuilder(CUDAOpBuilder):
         return sources
 
     def extra_ldflags(self):
-        import dskernels
-        lib_path = dskernels.library_path()
-        prefix = self.get_prefix()
-        lib_path = os.path.join(prefix, lib_path)
-        lib_path = self.deepspeed_src_path(lib_path)
-
+        lib_path = 'inference/v2/lib/ft_gemm/gemm_variants' 
+        lib_path = os.path.join(self.deepspeed_src_path("deepspeed"), lib_path)
+        
         args = [f'-L{lib_path}', '-ldeepspeedft']
         if self.jit_load:
             args.append(f'-Wl,-rpath,{lib_path}')

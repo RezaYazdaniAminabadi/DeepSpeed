@@ -13,7 +13,6 @@
                             (int32_t*)assignments.data_ptr(),   \
                             (int32_t*)offsets.data_ptr(),       \
                             (const C_TYPE*)logits.data_ptr(),   \
-                            batch_metadata_ptr,                 \
                             n_tokens,                           \
                             n_experts,                          \
                             n_top_k,                            \
@@ -28,8 +27,7 @@ void top_k_gating(torch::Tensor& expert_counts,
                   torch::Tensor& scores,
                   torch::Tensor& assignments,
                   torch::Tensor& offsets,
-                  torch::Tensor& logits,
-                  torch::Tensor& batch_metadata)
+                  torch::Tensor& logits)
 {
     const int32_t n_tokens = scores.size(0);
     const int32_t n_top_k = scores.size(1);
@@ -48,8 +46,8 @@ void top_k_gating(torch::Tensor& expert_counts,
     TORCH_CHECK(offsets.scalar_type() == torch::kInt32);
 
     const int32_t n_experts = logits.size(1);
-    const RaggedBatchDescriptor* batch_metadata_ptr =
-        reinterpret_cast<const RaggedBatchDescriptor*>(batch_metadata.data_ptr());
+    // const RaggedBatchDescriptor* batch_metadata_ptr =
+    //     reinterpret_cast<const RaggedBatchDescriptor*>(batch_metadata.data_ptr());
 
     DISPATCH_TOP_K_GATING(kFloat, float)
     DISPATCH_TOP_K_GATING(kHalf, __half)
