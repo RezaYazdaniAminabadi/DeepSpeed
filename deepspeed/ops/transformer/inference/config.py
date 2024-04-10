@@ -43,6 +43,7 @@ class DeepSpeedInferenceConfig(TransformerConfig):
             return_tuple: if True, returns the transformer output as a tuple, otherwise returns as a tensor
             bigscience_bloom: This flag is added temporarily for supporting the BLOOM-176B model architecture.
             use_triton: This flag is to enable triton kernels in inference or not.
+            invert_mask: If True, the attention mask is inverted when passed to attention block.
     """
 
     def __init__(self,
@@ -81,12 +82,7 @@ class DeepSpeedInferenceConfig(TransformerConfig):
                  triton_autotune=False,
                  num_kv=-1,
                  rope_theta=10000,
-                 multi_query=False,
-                 n_top_k=1,
-                 n_experts=1,
-                 moe_freq=1,
-                 fp32_allreduce=True,
-                 use_baseline_implementation=False):
+                 invert_mask=True):
         super(DeepSpeedInferenceConfig,
               self).__init__(hidden_size, (intermediate_size if intermediate_size > 0 else 4 * hidden_size), heads,
                              num_hidden_layers)
@@ -122,12 +118,7 @@ class DeepSpeedInferenceConfig(TransformerConfig):
         self.triton_autotune = triton_autotune
         self.num_kv = num_kv
         self.rope_theta = rope_theta
-        self.multi_query = multi_query
-        self.n_top_k = n_top_k
-        self.n_experts = n_experts
-        self.moe_freq = moe_freq
-        self.fp32_allreduce = fp32_allreduce
-        self.use_baseline_implementation = use_baseline_implementation
+        self.invert_mask = invert_mask
 
     @classmethod
     def from_dict(cls, json_object):
