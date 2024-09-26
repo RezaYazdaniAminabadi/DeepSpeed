@@ -33,7 +33,8 @@ __global__ void apply_rotary_pos_half(T* mixed_query,
                                       unsigned head_size,
                                       unsigned total_count,
                                       float rope_theta,
-                                      int max_out_tokens)
+                                      int max_out_tokens,
+                                      bool multi_query)
 {
     constexpr int T_per_thread = granularity / sizeof(T);
     constexpr int heads_per_block = rot_half::threads / threadsPerHead;
@@ -44,7 +45,8 @@ __global__ void apply_rotary_pos_half(T* mixed_query,
     const int head_idx = blockIdx.x * heads_per_block + threadIdx.x / threadsPerHead;
     const int cur_seq_idx = head_idx % seq_len;
     const int offset = head_idx * head_size;
-    const int k_offset = (cur_seq_idx + (head_idx / seq_len) * max_out_tokens) * head_size;
+    const int k_offset =
+        multi_query ? offset : (cur_seq_idx + (head_idx / seq_len) * max_out_tokens) * head_size;
 
     const int seq_idx = cur_seq_idx + seq_offset;
     const int half_dim = rotary_dim >> 1;
@@ -87,17 +89,18 @@ __global__ void apply_rotary_pos_half(T* mixed_query,
     }
 }
 
-#define LAUNCH_ROT_POS_EMB_HALF(HEAD_THREADS, ALIGNMENT)                                       \
-    apply_rotary_pos_half<T, HEAD_THREADS, ALIGNMENT><<<grid, block, 0, stream>>>(mixed_query, \
-                                                                                  key_layer,   \
-                                                                                  rotary_dim,  \
-                                                                                  seq_len,     \
-                                                                                  offset,      \
-                                                                                  num_heads,   \
-                                                                                  head_size,   \
-                                                                                  total_count, \
-                                                                                  rope_theta,  \
-                                                                                  max_out_tokens);
+#define LAUNCH_ROT_POS_EMB_HALF(HEAD_THREADS, ALIGNMENT)                                          \
+    apply_rotary_pos_half<T, HEAD_THREADS, ALIGNMENT><<<grid, block, 0, stream>>>(mixed_query,    \
+                                                                                  key_layer,      \
+                                                                                  rotary_dim,     \
+                                                                                  seq_len,        \
+                                                                                  offset,         \
+                                                                                  num_heads,      \
+                                                                                  head_size,      \
+                                                                                  total_count,    \
+                                                                                  rope_theta,     \
+                                                                                  max_out_tokens, \
+                                                                                  multi_query);
 
 #ifdef __HIP_PLATFORM_AMD__
 #define LAUNCH_FOR_ALIGNMENT(ALIGNMENT)         \
@@ -140,7 +143,8 @@ void launch_apply_rotary_pos_emb(T* mixed_query,
                                  unsigned batch,
                                  float rope_theta,
                                  cudaStream_t stream,
-                                 int max_out_tokens)
+                                 int max_out_tokens,
+                                 bool multi_query)
 {
     const int half_dim = rotary_dim >> 1;
 
@@ -190,7 +194,8 @@ void launch_apply_rotary_pos_emb(T* mixed_query,
                                                  unsigned,     \
                                                  float,        \
                                                  cudaStream_t, \
-                                                 int);
+                                                 int,          \
+                                                 bool);
 
 INSTANTIATE_LAUNCH_ROTARY_POS_EMB(float);
 #ifdef BF16_AVAILABLE

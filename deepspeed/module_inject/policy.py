@@ -170,6 +170,41 @@ def maybe_copy(module,
                                                 transpose(tmp)), int8=weight_quantizer.q_int8)
         setattr(module, dst_name, dst)
 
+def maybe_copy_experts(module,
+               sd,
+               weight_quantizer,
+               mp_replace,
+               dst_name,
+               src_name,
+               qkv=False,
+               megatron_v2=False,
+               split_qkv=False,
+               heads=1,
+               expert_id=0):
+    if src_name in sd:
+        dst_all = getattr(module, dst_name)
+        dst = dst_all[expert_id]
+        tmp = sd[src_name]
+        if len(dst.shape) == 1:
+            if split_qkv:
+                dst_all[expert_id].data.copy_(mp_replace.strided_copy(dst, tmp, num_splits=3))
+            else:
+                dst_all[expert_id].data.copy_(mp_replace.copy(dst, tmp))
+            if qkv and megatron_v2:
+                dst_all[expert_id].data.copy_(torch.nn.parameter.Parameter(_transpose(dst, heads=heads, mp_replace=mp_replace).contiguous()))
+        else:
+            if split_qkv:
+                dst_all[expert_id].data.copy_(mp_replace.strided_copy(dst, weight_quantizer.quantize(tmp if weight_quantizer.q_int8 else \
+                                                (transpose(tmp).contiguous())), num_splits=3, int8=weight_quantizer.q_int8))
+            else:
+                if qkv and megatron_v2:
+                    tmp = _transpose(transpose(tmp), heads=heads, mp_replace=mp_replace).contiguous()
+                    if weight_quantizer.q_int8:
+                        tmp = transpose(tmp)
+                dst_all[expert_id].data.copy_(mp_replace.copy(dst, weight_quantizer.quantize(tmp if weight_quantizer.q_int8 else \
+                                                transpose(tmp)), int8=weight_quantizer.q_int8))
+        setattr(module, dst_name, dst_all)
+
 
 # Extending the maybe_copy function for when the q, k, and v are in separate parameters!
 def maybe_copy_qkv(module, sd, weight_quantizer, mp_replace, dst_name, src_names, split_qkv=False):
@@ -207,6 +242,31 @@ def maybe_copy_geglu(module, sd, weight_quantizer, mp_replace, dst_name, src_nam
                                             transpose(mlp1_data)), num_splits=2, int8=weight_quantizer.q_int8)
         setattr(module, dst_name, dst)
 
+
+def maybe_copy_experts_geglu(module, sd, weight_quantizer, mp_replace, dst_name, prefix, src_names, expert_id):
+    if prefix + src_names[0] in sd:
+        reg_proj = sd[prefix + src_names[0]]
+    else:
+        reg_proj = None
+    if prefix + src_names[1] in sd:
+        gate_proj = sd[prefix + src_names[1]]
+    else:
+        gate_proj = None
+    if prefix + src_names[0] in sd or prefix + src_names[1] in sd:
+        dst = getattr(module, dst_name)
+        reg_proj = torch.empty_like(gate_proj) if reg_proj is None else reg_proj
+        gate_proj = torch.empty_like(reg_proj) if gate_proj is None else gate_proj
+        mlp1_data = torch.cat((reg_proj, gate_proj), dim=0)
+        out = mp_replace.strided_copy(dst[expert_id], weight_quantizer.quantize(mlp1_data.to(get_accelerator().device_name()) if weight_quantizer.q_int8 else \
+                                            transpose(mlp1_data)), num_splits=2, int8=weight_quantizer.q_int8)
+        
+        if prefix + src_names[0] in sd and prefix + src_names[1] in sd:
+            dst[expert_id].data.copy_(out)
+        elif prefix + src_names[0] in sd:
+            dst[expert_id].data[..., : reg_proj.shape[0]].copy_(out[..., : reg_proj.shape[0]])
+        else:
+            dst[expert_id].data[..., reg_proj.shape[0]: ].copy_(out[..., reg_proj.shape[0]: ])
+        setattr(module, dst_name, dst)
 
 def pack_lora_weights(p):
     return [

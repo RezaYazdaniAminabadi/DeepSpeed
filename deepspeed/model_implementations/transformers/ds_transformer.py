@@ -9,6 +9,7 @@ from deepspeed import comm as dist
 from deepspeed.utils.logging import log_dist
 
 from deepspeed.ops.transformer.inference.ds_mlp import DeepSpeedMLP
+from deepspeed.ops.transformer.inference.ds_mlp_moe import DeepSpeedMoEMLP
 from deepspeed.ops.transformer.inference.ds_attention import DeepSpeedSelfAttention, BloomSelfAttention
 from deepspeed.accelerator import get_accelerator
 from deepspeed.ops.op_builder import InferenceBuilder
@@ -50,7 +51,7 @@ class DeepSpeedTransformerInference(nn.Module):
         self.config = config
         self.config.layer_id = DeepSpeedTransformerInference.layer_id
         DeepSpeedTransformerInference.layer_id += 1
-
+        self.n_experts = self.config.n_experts
         data_type = torch.half if self.config.dtype == torch.int8 else self.config.dtype
         global inference_module
         if inference_module is None:
@@ -75,8 +76,17 @@ class DeepSpeedTransformerInference(nn.Module):
         if deepspeed.HAS_TRITON and self.config.use_triton:
             self.mlp = TritonMLP(self.config)
         else:
-            self.mlp = DeepSpeedMLP(self.config, mp_group, quantize_scales, quantize_groups, merge_count,
+            if self.config.n_experts > 1 and (self.config.layer_id % self.config.moe_freq) == (self.config.moe_freq - 1):
+                self.moe_layer = True
+                self.mlp = DeepSpeedMoEMLP(self.config, mp_group, 
+                                    quantize_scales, quantize_groups, merge_count,
                                     mlp_extra_grouping)
+            else:
+                self.moe_layer = False
+                self.mlp = DeepSpeedMLP(self.config, mp_group, quantize_scales, 
+                                    quantize_groups, merge_count,
+                                    mlp_extra_grouping)
+
 
         device = get_accelerator().current_device_name()  # if config.bigscience_bloom else 'cpu'
         if self.config.set_empty_params:

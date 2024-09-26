@@ -35,6 +35,8 @@ class DS_LLAMAContainer(MetaTensorContainer, HybridGatedMLPContainer, HybridSpli
         _config.rotate_every_two = False
         _config.rotary_dim = self.hidden_size // self.num_attention_heads
         _config.rope_theta = self.policy.client_module.self_attn.rope_theta
+        # _config.num_kv = 8
+        # _config.multi_query = True
         self.module = DeepSpeedGPTInference(_config, mp_group=self.mp_group)
 
         return self.module
@@ -123,7 +125,10 @@ class LLAMALayerPolicy(TransformerPolicy):
         self.client_module = client_module
         try:
             import transformers
-            LLAMALayerPolicy._orig_layer_class = transformers.models.llama.modeling_llama.LlamaDecoderLayer  # type: ignore
+            LLAMALayerPolicy._orig_layer_class = [
+                transformers.models.llama.modeling_llama.LlamaDecoderLayer,
+                transformers.models.mistral.modeling_mistral.MistralDecoderLayer,
+            ]  # type: ignore
         except:
             LLAMALayerPolicy._orig_layer_class = None
 
@@ -143,7 +148,14 @@ class LLAMALayerPolicy(TransformerPolicy):
         kw = self.client_module.self_attn.k_proj.weight
         vw = self.client_module.self_attn.v_proj.weight
 
+        # num_kv = self.client_module.self_attn.num_key_value_heads
+        # head_dim = self.client_module.self_attn.head_dim
+        # qw = qw.reshape(num_kv, -1, head_dim, qw.shape[-1])
+        # kw = kw.reshape(num_kv, -1, head_dim, kw.shape[-1])
+        # vw = vw.reshape(num_kv, -1, head_dim, kw.shape[-1])
+
         qkvw = Parameter(torch.cat((qw, kw, vw), dim=0), requires_grad=enable_training)
+        # qkvw = Parameter(torch.cat((qw, kw, vw), dim=1), requires_grad=enable_training).reshape(-1, qw.shape[-1])
 
         return qkvw, \
                 None, \
